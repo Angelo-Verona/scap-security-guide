@@ -383,7 +383,8 @@ rhel7
 ├── cpe
 ├── fixes
 │   ├── ansible
-│   └── bash
+│   ├── bash
+│   └── salt
 ├── kickstart
 ├── overlays
 ├── profiles
@@ -412,7 +413,8 @@ identifier that is provided from link:https://nvd.nist.gov/products/cpe[NIST].
 |```fixes```
 |```[red]#Required#``` Contains scripts in various languages that fixes
 configuration to meet government or commercial compliance standards. Can contain
-the following directories: ```bash``` ```ansible``` ```puppet``` ```anaconda```
+the following directories: ```bash``` ```ansible``` ```salt``` ```puppet```
+```anaconda```
 
 |```kickstart```
 |```[red]#Optional#``` Contains product kickstart or build files to be used in
@@ -514,7 +516,7 @@ $ export PATH=$PATH:/home/_username_/scap-security-guide/shared/utils/
 
 == Contributing with XCCDFs, OVALs and remediations
 
-There are three main types of content in SSG, they are rules, defined using the XCCDF standard, checks, usually written in link:https://oval.mitre.org/language/about/[OVAL] format, and remediations, that can be executed on ansible, bash, anaconda installer and puppet.
+There are three main types of content in SSG, they are rules, defined using the XCCDF standard, checks, usually written in link:https://oval.mitre.org/language/about/[OVAL] format, and remediations, that can be executed on ansible, salt, bash, anaconda installer and puppet.
 SSG also has its own templating mechanism, allowing content writers to create models and use it to generate a number of checks and remediations.
 
 The SSG content is primarily divided by platform and it can be seen on its directory structure:
@@ -607,7 +609,7 @@ This is an example of a check, written using the custom OVAL syntax, that checks
 
 === Remediations
 
-Remediations, also called fixes, are used to change the state of the machine, so that previously non-passing rules can pass. There can be multiple versions of the same remediation meant to be executed by different applications, more specifically Ansible, Bash, Anaconda and Puppet.
+Remediations, also called fixes, are used to change the state of the machine, so that previously non-passing rules can pass. There can be multiple versions of the same remediation meant to be executed by different applications, more specifically Ansible, Salt, Bash, Anaconda and Puppet.
 They also have to be idempotent, meaning that they must be able to be executed multiple times without causing the fixes to accumulate. The Ansible's language works in such a way that this behavior is built-in, however, for the other versions, the remediations must have it implemented explicitly.
 Remediations also carry metadata that should be present at the beginning of the files. This meta data will be converted in link:https://scap.nist.gov/specifications/xccdf/xccdf_element_dictionary.html#fixType[XCCDF tags] during the building process. That is how it looks like and what it means:
 
@@ -671,6 +673,32 @@ Here is an example of a Ansible remediation that ensures the SELinux is enabled 
     regexp: selinux=0
   tags:
     @ANSIBLE_TAGS@
+----
+
+==== Salt
+
+Ansible remediations are stored as yml files in directory _/template/static/ansible_ under the targeted platform. They are meant to be executed by Ansible itself when requested by openscap, so they are
+written using link:ttp://docs.ansible.com/ansible/latest/intro.html[Ansible's own language] with the following exceptions:
+
+- The remediation content must be only the _tasks_ section of what would be a playbook
+- The _tags_ section must be present in each task as shown in the example, it'll be replaced during the building process
+- Notifications and handlers are not supported
+
+Here is an example of a Salt remediation that ensures the SELinux is enabled in grub:
+
+[source,yml]
+----
+# platform = multi_platform_rhel,multi_platform_fedora
+# reboot = false
+# strategy = restrict
+# complexity = low
+# disruption = low
+
+Ensure SELinux Not Disabled in /etc/default/grub:
+  file.replace:
+    - name: /etc/default/grub
+    - pattern: [\s]+(selinux|enforcing)=0
+    - repl: ''
 ----
 
 ==== Bash

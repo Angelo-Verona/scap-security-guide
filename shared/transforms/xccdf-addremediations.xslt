@@ -1,12 +1,13 @@
 <?xml version="1.0"?>
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:xccdf="http://checklists.nist.gov/xccdf/1.1" xmlns:xhtml="http://www.w3.org/1999/xhtml" exclude-result-prefixes="xccdf">
 
-<!-- This transform expects stringparams "bash_remediations", "ansible_remediations", "puppet_remediations",
+<!-- This transform expects stringparams "bash_remediations", "ansible_remediations", "salt_remediations", "puppet_remediations",
      & "anaconda_remediations"
      specifying a filenames containing a list of remediations.  It inserts these into the Rules
      specified inside the remediations file. -->
 <xsl:param name="bash_remediations"/>
 <xsl:param name="ansible_remediations"/>
+<xsl:param name="salt_remediations"/>
 <xsl:param name="puppet_remediations"/>
 <xsl:param name="anaconda_remediations"/>
 
@@ -18,6 +19,10 @@
 <xsl:variable name="ansible_fixgroup" select="$ansible_remediations_doc/xccdf:fix-content/xccdf:fix-group" />
 <xsl:variable name="ansible_fixcommongroup" select="$ansible_remediations_doc/xccdf:fix-content/xccdf:fix-common-group" />
 
+<xsl:variable name="salt_remediations_doc" select="document($salt_remediations)" />
+<xsl:variable name="salt_fixgroup" select="$salt_remediations_doc/xccdf:fix-content/xccdf:fix-group" />
+<xsl:variable name="salt_fixcommongroup" select="$salt_remediations_doc/xccdf:fix-content/xccdf:fix-common-group" />
+
 <xsl:variable name="puppet_remediations_doc" select="document($puppet_remediations)" />
 <xsl:variable name="puppet_fixgroup" select="$puppet_remediations_doc/xccdf:fix-content/xccdf:fix-group" />
 <xsl:variable name="puppet_fixcommongroup" select="$puppet_remediations_doc/xccdf:fix-content/xccdf:fix-common-group" />
@@ -28,8 +33,8 @@
 
 
 
-<xsl:variable name="fixgroups" select="$bash_fixgroup | $ansible_fixgroup | $puppet_fixgroup | $anaconda_fixgroup" />
-<xsl:variable name="fixcommongroups" select="$bash_fixcommongroup | $ansible_fixcommongroup | $puppet_fixcommongroup | $anaconda_fixcommongroup" />
+<xsl:variable name="fixgroups" select="$bash_fixgroup | $ansible_fixgroup| $salt_fixgroup | $puppet_fixgroup | $anaconda_fixgroup" />
+<xsl:variable name="fixcommongroups" select="$bash_fixcommongroup | $ansible_fixcommongroup| $salt_fixcommongroup | $puppet_fixcommongroup | $anaconda_fixcommongroup" />
 
 <xsl:template name="find-and-replace">
   <xsl:param name="text"/>
@@ -169,6 +174,10 @@
 
   <xsl:if test="$ansible_remediations='' or not($ansible_remediations_doc)">
     <xsl:message terminate="yes">Fatal error while loading "<xsl:value-of select="$ansible_remediations"/>".</xsl:message>
+  </xsl:if>
+
+  <xsl:if test="$salt_remediations='' or not($salt_remediations_doc)">
+    <xsl:message terminate="yes">Fatal error while loading "<xsl:value-of select="$salt_remediations"/>".</xsl:message>
   </xsl:if>
 
   <xsl:if test="$anaconda_remediations='' or not($anaconda_remediations_doc)">

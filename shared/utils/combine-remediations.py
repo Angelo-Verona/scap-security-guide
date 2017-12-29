@@ -97,9 +97,14 @@ def get_fixgroup_for_remediation_type(fixcontent, remediation_type):
                                 system="urn:redhat:anaconda:pre",
                                 xmlns="http://checklists.nist.gov/xccdf/1.1")
 
-    if remediation_type == 'ansible':
+    elif remediation_type == 'ansible':
         return ElementTree.SubElement(fixcontent, "fix-group", id="ansible",
                                 system="urn:xccdf:fix:script:ansible",
+                                xmlns="http://checklists.nist.gov/xccdf/1.1")
+
+    elif remediation_type == 'salt':
+        return ElementTree.SubElement(fixcontent, "fix-group", id="salt",
+                                system="urn:xccdf:fix:script:salt",
                                 xmlns="http://checklists.nist.gov/xccdf/1.1")
 
     elif remediation_type == 'bash':
@@ -123,6 +128,9 @@ def is_supported_filename(remediation_type, filename):
 
     elif remediation_type == 'ansible':
         return filename.endswith('.yml')
+
+    elif remediation_type == 'salt':
+        return filename.endswith('.sls')
 
     elif remediation_type == 'bash':
         return filename.endswith('.sh')

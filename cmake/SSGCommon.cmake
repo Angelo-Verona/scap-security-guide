@@ -258,9 +258,10 @@ macro(_ssg_build_remediations_for_language PRODUCT LANGUAGE)
 endmacro()
 
 macro(ssg_build_remediations PRODUCT)
-    message(STATUS "Scanning for dependencies of ${PRODUCT} fixes (bash, ansible, puppet and anaconda)...")
+    message(STATUS "Scanning for dependencies of ${PRODUCT} fixes (bash, ansible, salt, puppet and anaconda)...")
     _ssg_build_remediations_for_language(${PRODUCT} "bash")
     _ssg_build_remediations_for_language(${PRODUCT} "ansible")
+    _ssg_build_remediations_for_language(${PRODUCT} "salt")
     _ssg_build_remediations_for_language(${PRODUCT} "puppet")
     _ssg_build_remediations_for_language(${PRODUCT} "anaconda")
 endmacro()
@@ -270,7 +271,7 @@ macro(ssg_build_xccdf_with_remediations PRODUCT)
     string(REPLACE " " "%20" CMAKE_CURRENT_BINARY_DIR_NO_SPACES "${CMAKE_CURRENT_BINARY_DIR}")
     add_custom_command(
         OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/xccdf-unlinked.xml"
-        COMMAND "${XSLTPROC_EXECUTABLE}" --stringparam bash_remediations "${CMAKE_CURRENT_BINARY_DIR_NO_SPACES}/bash-fixes.xml" --stringparam ansible_remediations "${CMAKE_CURRENT_BINARY_DIR_NO_SPACES}/ansible-fixes.xml" --stringparam puppet_remediations "${CMAKE_CURRENT_BINARY_DIR_NO_SPACES}/puppet-fixes.xml" --stringparam anaconda_remediations "${CMAKE_CURRENT_BINARY_DIR_NO_SPACES}/anaconda-fixes.xml" --output "${CMAKE_CURRENT_BINARY_DIR}/xccdf-unlinked.xml" "${SSG_SHARED_TRANSFORMS}/xccdf-addremediations.xslt" "${CMAKE_CURRENT_BINARY_DIR}/xccdf-unlinked-ocilrefs.xml"
+        COMMAND "${XSLTPROC_EXECUTABLE}" --stringparam bash_remediations "${CMAKE_CURRENT_BINARY_DIR_NO_SPACES}/bash-fixes.xml" --stringparam ansible_remediations "${CMAKE_CURRENT_BINARY_DIR_NO_SPACES}/ansible-fixes.xml" --stringparam salt_remediations "${CMAKE_CURRENT_BINARY_DIR_NO_SPACES}/salt-fixes.xml" --stringparam puppet_remediations "${CMAKE_CURRENT_BINARY_DIR_NO_SPACES}/puppet-fixes.xml" --stringparam anaconda_remediations "${CMAKE_CURRENT_BINARY_DIR_NO_SPACES}/anaconda-fixes.xml" --output "${CMAKE_CURRENT_BINARY_DIR}/xccdf-unlinked.xml" "${SSG_SHARED_TRANSFORMS}/xccdf-addremediations.xslt" "${CMAKE_CURRENT_BINARY_DIR}/xccdf-unlinked-ocilrefs.xml"
         COMMAND "${XMLLINT_EXECUTABLE}" --format --output "${CMAKE_CURRENT_BINARY_DIR}/xccdf-unlinked.xml" "${CMAKE_CURRENT_BINARY_DIR}/xccdf-unlinked.xml"
         DEPENDS generate-internal-${PRODUCT}-xccdf-unlinked-ocilrefs.xml
         DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/xccdf-unlinked-ocilrefs.xml"
@@ -278,6 +279,8 @@ macro(ssg_build_xccdf_with_remediations PRODUCT)
         DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/bash-fixes.xml"
         DEPENDS generate-internal-${PRODUCT}-ansible-fixes.xml
         DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/ansible-fixes.xml"
+        DEPENDS generate-internal-${PRODUCT}-salt-fixes.xml
+        DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/salt-fixes.xml"
         DEPENDS generate-internal-${PRODUCT}-puppet-fixes.xml
         DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/puppet-fixes.xml"
         DEPENDS generate-internal-${PRODUCT}-anaconda-fixes.xml
@@ -726,6 +729,7 @@ macro(ssg_build_product PRODUCT)
 
     ssg_build_html_guides(${PRODUCT})
     ssg_build_remediation_roles(${PRODUCT} "urn:xccdf:fix:script:ansible" "yml")
+    ssg_build_remediation_roles(${PRODUCT} "urn:xccdf:fix:script:salt" "sls")
     ssg_build_remediation_roles(${PRODUCT} "urn:xccdf:fix:script:sh" "sh")
 
     add_custom_target(
@@ -743,6 +747,7 @@ macro(ssg_build_product PRODUCT)
     add_custom_target(
         ${PRODUCT}-roles
         DEPENDS generate-all-roles-${PRODUCT}-yml
+        DEPENDS generate-all-roles-${PRODUCT}-sls
         DEPENDS generate-all-roles-${PRODUCT}-sh
     )
     add_dependencies(${PRODUCT} ${PRODUCT}-roles)
@@ -787,6 +792,18 @@ macro(ssg_build_product PRODUCT)
                 TYPE FILE FILES \${ROLE_FILES})
         else()
             file(INSTALL DESTINATION \"${SSG_ANSIBLE_ROLE_INSTALL_DIR}\"
+                TYPE FILE FILES \${ROLE_FILES})
+        endif()
+        "
+    )
+    install(
+        CODE "
+        file(GLOB ROLE_FILES \"${CMAKE_BINARY_DIR}/roles/ssg-${PRODUCT}-role-*.yml\") \n
+        if(NOT IS_ABSOLUTE ${SSG_SALT_ROLE_INSTALL_DIR})
+            file(INSTALL DESTINATION \"\${CMAKE_INSTALL_PREFIX}/${SSG_SALT_ROLE_INSTALL_DIR}\"
+                TYPE FILE FILES \${ROLE_FILES})
+        else()
+            file(INSTALL DESTINATION \"${SSG_SALT_ROLE_INSTALL_DIR}\"
                 TYPE FILE FILES \${ROLE_FILES})
         endif()
         "
@@ -884,6 +901,7 @@ macro(ssg_build_derivative_product ORIGINAL SHORTNAME DERIVATIVE)
 
     ssg_build_html_guides(${DERIVATIVE})
     ssg_build_remediation_roles(${DERIVATIVE} "urn:xccdf:fix:script:ansible" "yml")
+    ssg_build_remediation_roles(${DERIVATIVE} "urn:xccdf:fix:script:salt" "sls")
     ssg_build_remediation_roles(${DERIVATIVE} "urn:xccdf:fix:script:sh" "sh")
 
     add_custom_target(
@@ -895,6 +913,7 @@ macro(ssg_build_derivative_product ORIGINAL SHORTNAME DERIVATIVE)
     add_custom_target(
         ${DERIVATIVE}-roles
         DEPENDS generate-all-roles-${DERIVATIVE}-yml
+        DEPENDS generate-all-roles-${DERIVATIVE}-sls
         DEPENDS generate-all-roles-${DERIVATIVE}-sh
     )
     add_dependencies(${DERIVATIVE} ${DERIVATIVE}-roles)
@@ -926,6 +945,18 @@ macro(ssg_build_derivative_product ORIGINAL SHORTNAME DERIVATIVE)
                 TYPE FILE FILES \${ROLE_FILES})
         else()
             file(INSTALL DESTINATION \"${SSG_ANSIBLE_ROLE_INSTALL_DIR}\"
+                TYPE FILE FILES \${ROLE_FILES})
+        endif()
+        "
+    )
+    install(
+        CODE "
+        file(GLOB ROLE_FILES \"${CMAKE_BINARY_DIR}/roles/ssg-${DERIVATIVE}-role-*.yml\") \n
+        if(NOT IS_ABSOLUTE ${SSG_SALT_ROLE_INSTALL_DIR})
+            file(INSTALL DESTINATION \"\${CMAKE_INSTALL_PREFIX}/${SSG_SALT_ROLE_INSTALL_DIR}\"
+                TYPE FILE FILES \${ROLE_FILES})
+        else()
+            file(INSTALL DESTINATION \"${SSG_SALT_ROLE_INSTALL_DIR}\"
                 TYPE FILE FILES \${ROLE_FILES})
         endif()
         "
